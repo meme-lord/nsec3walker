@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/unsecured-company/nsec3walker/internal"
+	nsec3walker "github.com/unsecured-company/nsec3walker/pkg/main"
 )
 
 func main() {
