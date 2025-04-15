@@ -112,7 +112,7 @@ func (nw *NSec3Walker) RunWalk() (err error) {
 	dg.Run(nw.chanDomain)
 
 	for _, ns := range nw.config.DomainDnsServers {
-		for i := 0; i < nw.config.cntThreadsPerNs; i++ {
+		for i := 0; i < nw.config.CntThreadsPerNs; i++ {
 			nw.cntNsWorkers++
 			go nw.workerForAuthNs(ns)
 		}

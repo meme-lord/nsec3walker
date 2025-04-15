@@ -48,6 +48,7 @@ Additional commands:
 
 type Config struct {
 	Action                string
+	CntThreadsPerNs       int
 	Domain                string
 	DomainDnsServers      []string
 	FileCsv               string
@@ -59,7 +60,6 @@ type Config struct {
 	QuitOnChange          bool
 	Verbose               bool
 
-	cntThreadsPerNs   int
 	debugDomain       string
 	domainServerInput string
 	dumpDomains       bool
@@ -126,7 +126,7 @@ func NewConfig() (config *Config, err error) {
 	errs := []error{
 		ValueMustBePositive(config.LogCounterIntervalSec, FlagProgress),
 		ValueMustBePositive(config.QuitAfterMin, FlagQuitAfter),
-		ValueMustBePositive(config.cntThreadsPerNs, FlagThreads),
+		ValueMustBePositive(config.CntThreadsPerNs, FlagThreads),
 	}
 
 	for _, errX := range errs {
@@ -183,7 +183,7 @@ func NewWalkCommand(config *Config) *cobra.Command {
 	walkCmd.Flags().IntVar(&config.QuitAfterMin, FlagQuitAfter, QuitAfterMin, "Quit after X minutes of no new hashes")
 	walkCmd.Flags().StringVarP(&config.filePathPrefix, "output", "o", "", "Path and prefix for output files. ../directory/prefix")
 	walkCmd.Flags().BoolVar(&config.QuitOnChange, "quit-on-change", false, "Quit if the zone changed")
-	walkCmd.Flags().IntVarP(&config.cntThreadsPerNs, FlagThreads, "t", CntThreadsPerNs, "[WIP] Threads per NS server")
+	walkCmd.Flags().IntVarP(&config.CntThreadsPerNs, FlagThreads, "t", CntThreadsPerNs, "[WIP] Threads per NS server")
 	addCommonFlags(walkCmd, config)
 	addDomainFlags(walkCmd, config)
 
