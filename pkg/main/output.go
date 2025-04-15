@@ -60,6 +60,13 @@ func (o *Output) SetFilePrefix(filePrefix string) (err error) {
 	return
 }
 
+func (o *Output) SetChannel(channel chan CsvItem) {
+	if o.files == nil {
+		o.files = &OutputFiles{}
+	}
+	o.files.Channel = channel
+}
+
 func (fi *OutputFiles) Close() {
 	if fi.HashFile != nil {
 		_ = fi.HashFile.Close()
