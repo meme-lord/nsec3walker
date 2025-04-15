@@ -2,11 +2,12 @@ package nsec3walker
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	"golang.org/x/net/publicsuffix"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/spf13/cobra"
+	"golang.org/x/net/publicsuffix"
 )
 
 const (
@@ -51,21 +52,21 @@ type Config struct {
 	DomainDnsServers      []string
 	FileCsv               string
 	FileHashcat           string
+	GenericServerInput    string
 	LogCounterIntervalSec int
 	Output                *Output
 	QuitAfterMin          int
 	QuitOnChange          bool
 	Verbose               bool
 
-	cntThreadsPerNs    int
-	debugDomain        string
-	domainServerInput  string
-	dumpDomains        bool
-	filePathPrefix     string
-	genericDnsServers  []string
-	genericServerInput string
-	help               bool
-	updateCsv          bool
+	cntThreadsPerNs   int
+	debugDomain       string
+	domainServerInput string
+	dumpDomains       bool
+	filePathPrefix    string
+	genericDnsServers []string
+	help              bool
+	updateCsv         bool
 }
 
 func NewConfig() (config *Config, err error) {
@@ -237,7 +238,7 @@ func addCommonFlags(cmd *cobra.Command, config *Config) {
 func addDomainFlags(cmd *cobra.Command, config *Config) {
 	cmd.Flags().StringVar(&config.Domain, FlagDomain, "", "Domain")
 	_ = cmd.MarkFlagRequired(FlagDomain) // would return err if FlagDomain wasn't defined above
-	cmd.Flags().StringVar(&config.genericServerInput, "resolvers", GenericServers, "Comma-separated list of generic DNS resolvers")
+	cmd.Flags().StringVar(&config.GenericServerInput, "resolvers", GenericServers, "Comma-separated list of generic DNS resolvers")
 	cmd.Flags().StringVar(&config.domainServerInput, FlagNameServers, "", "Comma-separated list of custom authoritative NS servers for the domain")
 
 	return
@@ -256,7 +257,7 @@ func (cnf *Config) processAuthNsServers(getFromRoot bool) (err error) {
 		domain, _ = publicsuffix.PublicSuffix(domain)
 	}
 
-	genericDnsServers := cnf.parseServersValue(cnf.genericServerInput)
+	genericDnsServers := cnf.parseServersValue(cnf.GenericServerInput)
 	cnf.Output.Logf("Getting NS servers for [%s] via [%v]", domain, genericDnsServers)
 
 	topCount := 0
