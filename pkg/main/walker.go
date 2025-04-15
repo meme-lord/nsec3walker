@@ -186,6 +186,7 @@ func (nw *NSec3Walker) processHashes() (err error) {
 		}
 
 		if isFull {
+			nw.out.Channel(hash, nw.nsec)
 			nw.out.Csv(hash, nw.nsec)
 		}
 

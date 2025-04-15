@@ -2,14 +2,16 @@ package nsec3walker
 
 import (
 	"fmt"
-	"github.com/miekg/dns"
 	"log"
+
+	"github.com/miekg/dns"
 )
 
 type OutputFiles struct {
 	HashFile *File
 	LogFile  *File
 	MapFile  *File
+	Channel  chan CsvItem
 }
 
 type Output struct {
@@ -70,6 +72,10 @@ func (fi *OutputFiles) Close() {
 	if fi.LogFile != nil {
 		_ = fi.LogFile.Close()
 	}
+
+	if fi.Channel != nil {
+		close(fi.Channel)
+	}
 }
 
 func (o *Output) Hash(hash string, nsec Nsec3Params) {
@@ -113,6 +119,30 @@ func (o *Output) Fatal(err error) {
 
 func (o *Output) isFileOutput() bool {
 	return o.files != nil
+}
+
+func (o *Output) Channel(hash Nsec3Record, nsec Nsec3Params) {
+	if o.files.Channel == nil {
+		return
+	}
+
+	var types []string
+
+	for _, t := range hash.Types {
+		types = append(types, dns.TypeToString[t])
+	}
+
+	csvItem := CsvItem{
+		Hash:       hash.Start,
+		HashNext:   hash.End,
+		Domain:     nsec.domain,
+		Salt:       nsec.salt,
+		Iterations: int(nsec.iterations),
+		Plaintext:  "",
+		Types:      types,
+	}
+
+	o.files.Channel <- csvItem
 }
 
 func (o *Output) Csv(hash Nsec3Record, nsec Nsec3Params) {
