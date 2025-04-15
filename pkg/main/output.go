@@ -11,11 +11,11 @@ type OutputFiles struct {
 	HashFile *File
 	LogFile  *File
 	MapFile  *File
-	Channel  chan CsvItem
 }
 
 type Output struct {
 	files   *OutputFiles
+	channel chan CsvItem
 	verbose bool
 }
 
@@ -61,10 +61,7 @@ func (o *Output) SetFilePrefix(filePrefix string) (err error) {
 }
 
 func (o *Output) SetChannel(channel chan CsvItem) {
-	if o.files == nil {
-		o.files = &OutputFiles{}
-	}
-	o.files.Channel = channel
+	o.channel = channel
 }
 
 func (fi *OutputFiles) Close() {
@@ -78,10 +75,6 @@ func (fi *OutputFiles) Close() {
 
 	if fi.LogFile != nil {
 		_ = fi.LogFile.Close()
-	}
-
-	if fi.Channel != nil {
-		close(fi.Channel)
 	}
 }
 
@@ -129,7 +122,7 @@ func (o *Output) isFileOutput() bool {
 }
 
 func (o *Output) Channel(hash Nsec3Record, nsec Nsec3Params) {
-	if o.files.Channel == nil {
+	if o.channel == nil {
 		return
 	}
 
@@ -149,7 +142,7 @@ func (o *Output) Channel(hash Nsec3Record, nsec Nsec3Params) {
 		Types:      types,
 	}
 
-	o.files.Channel <- csvItem
+	o.channel <- csvItem
 }
 
 func (o *Output) Csv(hash Nsec3Record, nsec Nsec3Params) {
@@ -185,6 +178,9 @@ func (o *Output) Csv(hash Nsec3Record, nsec Nsec3Params) {
 func (o *Output) Close() {
 	if o.files != nil {
 		o.files.Close()
+	}
+	if o.channel != nil {
+		close(o.channel)
 	}
 }
 
