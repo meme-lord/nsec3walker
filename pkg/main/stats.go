@@ -3,7 +3,6 @@ package nsec3walker
 import (
 	"fmt"
 	"math"
-	"os"
 	"sync/atomic"
 	"time"
 )
@@ -22,7 +21,7 @@ func NewStats(out *Output) *Stats {
 	}
 }
 
-func (stats *Stats) logCounterChanges(interval time.Duration, quitAfterMin int) {
+func (stats *Stats) logCounterChanges(interval time.Duration, quitAfterMin int, quit chan struct{}) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -54,7 +53,8 @@ func (stats *Stats) logCounterChanges(interval time.Duration, quitAfterMin int) 
 
 		if stats.secondsWithoutResult.Load() >= int64(quitAfterMin*60) {
 			stats.out.Logf("No new hashes for %d seconds, quitting", secWithoutResult)
-			os.Exit(0) // successful run
+			close(quit)
+			return
 		}
 	}
 }

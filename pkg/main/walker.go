@@ -118,9 +118,10 @@ func (nw *NSec3Walker) RunWalk() (err error) {
 		}
 	}
 
-	go nw.stats.logCounterChanges(time.Second*time.Duration(nw.config.LogCounterIntervalSec), nw.config.QuitAfterMin)
+	quit := make(chan struct{})
+	go nw.stats.logCounterChanges(time.Second*time.Duration(nw.config.LogCounterIntervalSec), nw.config.QuitAfterMin, quit)
 
-	err = nw.processHashes()
+	err = nw.processHashes(quit)
 
 	return
 }
@@ -159,45 +160,52 @@ func (nw *NSec3Walker) RunDumpDomains() (err error) {
 	return
 }
 
-func (nw *NSec3Walker) processHashes() (err error) {
+func (nw *NSec3Walker) processHashes(quit chan struct{}) (err error) {
 	var startExists, endExists, isFull bool
 
-	for hash := range nw.chanHashesFound {
-		startExists, endExists, isFull, err = nw.ranges.Add(hash.Start, hash.End)
+	for {
+		select {
+		case <-quit:
+			// Quit signal received, stop processing
+			return
+		case hash, ok := <-nw.chanHashesFound:
+			if !ok {
+				// Channel closed, stop processing
+				return
+			}
+			startExists, endExists, isFull, err = nw.ranges.Add(hash.Start, hash.End)
 
-		if err != nil {
-			if nw.config.QuitOnChange {
-				return // The error message will be printed by the caller
+			if err != nil {
+				if nw.config.QuitOnChange {
+					return // The error message will be printed by the caller
+				}
+
+				// If the zone changes, and we don't quit, we can't determine if the chain is complete,
+				// so will need to rely on the timeout
+				nw.out.Log(err.Error())
 			}
 
-			// If the zone changes, and we don't quit, we can't determine if the chain is complete,
-			// so will need to rely on the timeout
-			nw.out.Log(err.Error())
-		}
+			nw.stats.gotHash(startExists, endExists)
 
-		nw.stats.gotHash(startExists, endExists)
+			if !startExists {
+				nw.out.Hash(hash.Start, nw.nsec)
+			}
 
-		if !startExists {
-			nw.out.Hash(hash.Start, nw.nsec)
-		}
+			if !endExists {
+				nw.out.Hash(hash.End, nw.nsec)
+			}
 
-		if !endExists {
-			nw.out.Hash(hash.End, nw.nsec)
-		}
+			if isFull {
+				nw.out.Channel(hash, nw.nsec)
+				nw.out.Csv(hash, nw.nsec)
+			}
 
-		if isFull {
-			nw.out.Channel(hash, nw.nsec)
-			nw.out.Csv(hash, nw.nsec)
-		}
-
-		if nw.ranges.isFinished() {
-			nw.out.Log(fmt.Sprintf("Finished with %d hashes", nw.stats.hashes.Load()))
-
-			return
+			if nw.ranges.isFinished() {
+				nw.out.Log(fmt.Sprintf("Finished with %d hashes", nw.stats.hashes.Load()))
+				return
+			}
 		}
 	}
-
-	return
 }
 
 func (nw *NSec3Walker) initNsec3Values() (err error) {
