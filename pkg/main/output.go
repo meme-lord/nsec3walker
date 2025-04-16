@@ -82,8 +82,9 @@ func (o *Output) Hash(hash string, nsec Nsec3Params) {
 	msg := fmt.Sprintf("%s:.%s:%s:%d\n", hash, nsec.domain, nsec.salt, nsec.iterations)
 
 	if !o.isFileOutput() {
-		fmt.Print(msg)
-
+		if o.channel == nil {
+			fmt.Print(msg)
+		}
 		return
 	}
 
