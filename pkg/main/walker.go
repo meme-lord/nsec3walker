@@ -27,6 +27,7 @@ type NSec3Walker struct {
 	chanDomain      chan *Domain
 	chanHashesFound chan Nsec3Record
 	chanHashesNew   chan string
+	chanQuit        chan struct{}
 }
 
 type Nsec3Params struct {
@@ -50,6 +51,7 @@ func NewNSec3Walker(config *Config) (nsecWalker *NSec3Walker) {
 		ranges:          NewRangeIndex(),
 		out:             config.Output,
 		stats:           stats,
+		chanQuit:        make(chan struct{}),
 	}
 
 	nsecWalker.nsec.domain = config.Domain
@@ -118,10 +120,9 @@ func (nw *NSec3Walker) RunWalk() (err error) {
 		}
 	}
 
-	quit := make(chan struct{})
-	go nw.stats.logCounterChanges(time.Second*time.Duration(nw.config.LogCounterIntervalSec), nw.config.QuitAfterMin, quit)
+	go nw.stats.logCounterChanges(time.Second*time.Duration(nw.config.LogCounterIntervalSec), nw.config.QuitAfterMin, nw.chanQuit)
 
-	err = nw.processHashes(quit)
+	err = nw.processHashes()
 
 	return
 }
@@ -160,12 +161,17 @@ func (nw *NSec3Walker) RunDumpDomains() (err error) {
 	return
 }
 
-func (nw *NSec3Walker) processHashes(quit chan struct{}) (err error) {
+func (nw *NSec3Walker) SendQuitSignal() {
+	nw.out.Log("Sending quit signal to all workers")
+	close(nw.chanQuit)
+}
+
+func (nw *NSec3Walker) processHashes() (err error) {
 	var startExists, endExists, isFull bool
 
 	for {
 		select {
-		case <-quit:
+		case <-nw.chanQuit:
 			// Quit signal received, stop processing
 			return
 		case hash, ok := <-nw.chanHashesFound:

@@ -29,32 +29,37 @@ func (stats *Stats) logCounterChanges(interval time.Duration, quitAfterMin int, 
 	var cntHashLast int64
 
 	for {
-		<-ticker.C
-		cntQuery := stats.queries.Load()
-		cntHash := stats.hashes.Load()
-		cntQ := atomic.LoadInt64(&cntQuery)
-		cntH := atomic.LoadInt64(&cntHash)
-		deltaQ := cntQ - cntQueryLast
-		deltaH := cntH - cntHashLast
-		ratioTotal := stats.calculateRatio(cntH, cntQ)
-		ratioDelta := stats.calculateRatio(deltaH, deltaQ)
-
-		qWithoutResult := stats.queriesWithoutResult.Load()
-		secWithoutResult := stats.secondsWithoutResult.Load()
-
-		msg := "In the last %v: Queries total/change %d/%d | Hashes total/change: %d/%d | Ratio total/change %d%%/%d%%"
-		msg += " | Without answer: %d , seconds %d"
-		msgLog := fmt.Sprintf(msg, interval, cntQ, deltaQ, cntH, deltaH, ratioTotal, ratioDelta, qWithoutResult, secWithoutResult)
-		stats.out.Log(msgLog)
-
-		cntQueryLast = cntQ
-		cntHashLast = cntH
-		stats.secondsWithoutResult.Add(int64(interval.Seconds()))
-
-		if stats.secondsWithoutResult.Load() >= int64(quitAfterMin*60) {
-			stats.out.Logf("No new hashes for %d seconds, quitting", secWithoutResult)
-			close(quit)
+		select {
+		case <-quit:
+			// Quit signal received, stop processing
 			return
+		case <-ticker.C:
+			cntQuery := stats.queries.Load()
+			cntHash := stats.hashes.Load()
+			cntQ := atomic.LoadInt64(&cntQuery)
+			cntH := atomic.LoadInt64(&cntHash)
+			deltaQ := cntQ - cntQueryLast
+			deltaH := cntH - cntHashLast
+			ratioTotal := stats.calculateRatio(cntH, cntQ)
+			ratioDelta := stats.calculateRatio(deltaH, deltaQ)
+
+			qWithoutResult := stats.queriesWithoutResult.Load()
+			secWithoutResult := stats.secondsWithoutResult.Load()
+
+			msg := "In the last %v: Queries total/change %d/%d | Hashes total/change: %d/%d | Ratio total/change %d%%/%d%%"
+			msg += " | Without answer: %d , seconds %d"
+			msgLog := fmt.Sprintf(msg, interval, cntQ, deltaQ, cntH, deltaH, ratioTotal, ratioDelta, qWithoutResult, secWithoutResult)
+			stats.out.Log(msgLog)
+
+			cntQueryLast = cntQ
+			cntHashLast = cntH
+			stats.secondsWithoutResult.Add(int64(interval.Seconds()))
+
+			if stats.secondsWithoutResult.Load() >= int64(quitAfterMin*60) {
+				stats.out.Logf("No new hashes for %d seconds, quitting", secWithoutResult)
+				close(quit)
+				return
+			}
 		}
 	}
 }
